@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterStatsDiv = document.getElementById('filterStats');
   const unfilteredResultsDiv = document.getElementById('unfilteredResults');
   const discardReasonsDiv = document.getElementById('discardReasons');
+  const buttonSpinner = document.querySelector('.button-spinner');
+  const buttonText = document.querySelector('.button-text');
 
   // Select elements for filters
   const subjectFilter = document.getElementById('subjectFilter');
@@ -23,50 +25,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const unitFilter = document.getElementById('unitFilter');
 
   // Initialize Select2 for all filter selects
-  $('.filter-select').select2({
-    dir: 'rtl',
-    placeholder: 'اختر...',
-    allowClear: true,
-    width: '100%'
-  });
-
-  // Fetch metadata options from server when page loads
-  fetchMetadataOptions();
-
-  // Function to fetch metadata options
-  async function fetchMetadataOptions() {
-    try {
-      const response = await fetch('/api/metadata-options');
-      if (!response.ok) {
-        throw new Error('فشل في استرداد خيارات البيانات الوصفية');
+  function initializeSelect2() {
+    $('.filter-select').select2({
+      dir: 'rtl',
+      placeholder: 'اختر...',
+      allowClear: true,
+      width: '100%',
+      language: {
+        noResults: function() {
+          return "لا توجد نتائج";
+        }
       }
-
-      const options = await response.json();
-
-      // Populate Subject dropdown
-      if (options.Subject && options.Subject.length > 0) {
-        populateSelect(subjectFilter, options.Subject);
-      }
-
-      // Populate Grade dropdown
-      if (options.Grade && options.Grade.length > 0) {
-        populateSelect(gradeFilter, options.Grade);
-      }
-
-      // Populate Unit dropdown
-      if (options.Unit && options.Unit.length > 0) {
-        populateSelect(unitFilter, options.Unit.map(String));
-      }
-    } catch (error) {
-      console.error('Error fetching metadata options:', error);
-      showError(error.message);
-    }
+    });
   }
 
   // Function to populate a select element with options
   function populateSelect(selectElement, optionsArray) {
+    if (!selectElement) {
+      console.error('Select element not found');
+      return;
+    }
+
+    // Clear existing options
     selectElement.innerHTML = '';
 
+    // Add a default empty option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'اختر...';
+    selectElement.appendChild(defaultOption);
+
+    // Add the actual options
     optionsArray.forEach(option => {
       const optionElement = document.createElement('option');
       optionElement.value = option;
@@ -77,6 +66,58 @@ document.addEventListener('DOMContentLoaded', () => {
     // Refresh Select2
     $(selectElement).trigger('change');
   }
+
+  // Fetch metadata options from server when page loads
+  async function fetchMetadataOptions() {
+    try {
+      showLoading(true, 'جاري تحميل خيارات البيانات الوصفية...');
+      
+      // Add a small delay to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const response = await fetch('/api/metadata-options');
+      if (!response.ok) {
+        throw new Error('فشل في استرداد خيارات البيانات الوصفية');
+      }
+
+      const options = await response.json();
+      console.log('Received metadata options:', options);
+
+      // Populate Subject dropdown
+      if (options.Subject && options.Subject.length > 0) {
+        populateSelect(subjectFilter, options.Subject);
+      } else {
+        console.warn('No Subject options available');
+      }
+
+      // Populate Grade dropdown
+      if (options.Grade && options.Grade.length > 0) {
+        populateSelect(gradeFilter, options.Grade);
+      } else {
+        console.warn('No Grade options available');
+      }
+
+      // Populate Unit dropdown
+      if (options.Unit && options.Unit.length > 0) {
+        populateSelect(unitFilter, options.Unit.map(String));
+      } else {
+        console.warn('No Unit options available');
+      }
+
+      // Initialize Select2 after all options are populated
+      initializeSelect2();
+      
+      // Ensure loading is hidden
+      showLoading(false);
+    } catch (error) {
+      console.error('Error fetching metadata options:', error);
+      showError(error.message);
+      showLoading(false);
+    }
+  }
+
+  // Start fetching metadata options
+  fetchMetadataOptions();
 
   // Clear filters button handler
   clearFiltersBtn.addEventListener('click', () => {
@@ -114,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Show loading
-    showLoading(true);
+    showLoading(true, 'جاري معالجة الاستعلام...');
     hideError();
     hideResults();
 
@@ -405,42 +446,46 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsDiv.classList.remove('hidden');
   }
 
-  // Show error message
-  function showError(message) {
-    errorDiv.textContent = message;
-    errorDiv.classList.remove('hidden');
+  // Function to show/hide loading state
+  function showLoading(show, message = 'جاري التحميل...') {
+    const loadingText = loadingDiv.querySelector('p');
+    if (!loadingText) {
+      console.error('Loading text element not found');
+      return;
+    }
+
+    if (show) {
+      loadingDiv.classList.remove('hidden');
+      loadingText.textContent = message;
+      submitBtn.disabled = true;
+      if (buttonText) buttonText.classList.add('hidden');
+      if (buttonSpinner) buttonSpinner.classList.remove('hidden');
+    } else {
+      loadingDiv.classList.add('hidden');
+      loadingText.textContent = 'جاري التحميل...';
+      submitBtn.disabled = false;
+      if (buttonText) buttonText.classList.remove('hidden');
+      if (buttonSpinner) buttonSpinner.classList.add('hidden');
+    }
   }
 
-  // Hide error message
+  // Function to show error message
+  function showError(message) {
+    errorDiv.classList.remove('hidden');
+    errorDiv.querySelector('.error-text').textContent = message;
+  }
+
+  // Function to hide error message
   function hideError() {
     errorDiv.classList.add('hidden');
   }
 
-  // Hide results
+  // Function to hide results
   function hideResults() {
     resultsDiv.classList.add('hidden');
-    if (appliedFiltersDiv) {
-      appliedFiltersDiv.classList.add('hidden');
-    }
-    if (filterStatsDiv) {
-      filterStatsDiv.classList.add('hidden');
-    }
-    if (unfilteredResultsDiv) {
-      unfilteredResultsDiv.classList.add('hidden');
-    }
-    if (discardReasonsDiv) {
-      discardReasonsDiv.classList.add('hidden');
-    }
-  }
-
-  // Show/hide loading spinner
-  function showLoading(show) {
-    if (show) {
-      loadingDiv.classList.remove('hidden');
-      submitBtn.disabled = true;
-    } else {
-      loadingDiv.classList.add('hidden');
-      submitBtn.disabled = false;
-    }
+    appliedFiltersDiv.classList.add('hidden');
+    filterStatsDiv.classList.add('hidden');
+    unfilteredResultsDiv.classList.add('hidden');
+    discardReasonsDiv.classList.add('hidden');
   }
 });

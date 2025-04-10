@@ -9,11 +9,16 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-    env_file:
-      - .env
-    restart: unless-stopped
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_BEDROCK_KB_ID=${AWS_BEDROCK_KB_ID}
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
     volumes:
-      - .:/app
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
       - /app/node_modules
-      - /app/src/public
-    user: "node"
+    command: sh -c "npm install && npm run dev"
+    restart: unless-stopped

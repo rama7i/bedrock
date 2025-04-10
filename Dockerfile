@@ -2,21 +2,24 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Install dependencies first (better caching)
 COPY package*.json ./
 RUN npm install
-
-# Create directories and set permissions
-RUN mkdir -p src/public && chown -R node:node /app
 
 # Copy the rest of the application
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Create necessary directories
+RUN mkdir -p /app/src/public
 
-# Use node user instead of root
+# Set proper permissions
+RUN chown -R node:node /app
+
+# Switch to non-root user
 USER node
 
-# Command to run the application
-CMD ["node", "src/index.js"]
+# Expose the port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "run", "dev"]

@@ -1,0 +1,119 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>استعلام قاعدة المعرفة Bedrock</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Add Google font that supports Arabic -->
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Add Select2 for improved multi-select dropdowns -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>استعلام قاعدة المعرفة Bedrock</h1>
+
+    <form id="queryForm">
+      <div class="form-group">
+        <label for="knowledgeBaseId">معرّف قاعدة المعرفة:</label>
+        <input type="text" id="knowledgeBaseId" required>
+      </div>
+
+      <div class="form-group">
+        <label for="query">الاستعلام:</label>
+        <textarea id="query" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="modelId">نموذج اللغة:</label>
+        <select id="modelId">
+          <option value="anthropic.claude-3-haiku-20240307-v1:0">Claude 3 Haiku</option>
+          <option value="anthropic.claude-3-sonnet-20240229-v1:0">Claude 3 Sonnet</option>
+          <option value="anthropic.claude-3-5-sonnet-20240620-v1:0">Claude 3.5 Sonnet v2</option>
+          <option value="anthropic.claude-3-7-sonnet-20240229-v1:0">Claude 3.7 Sonnet</option>
+          <option value="amazon.titan-text-express-v1">Amazon Titan Text Express</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <h3>فلاتر البيانات الوصفية</h3>
+        <div class="filters-explanation">
+          <p>اختر قيمة أو أكثر لكل فئة. سيتم تطبيق منطق "أو" بين القيم في نفس الفئة، ومنطق "و" بين الفئات المختلفة.</p>
+        </div>
+        <div id="filtersContainer">
+          <!-- Subject filter -->
+          <div class="filter-section">
+            <label for="subjectFilter">المادة:</label>
+            <select id="subjectFilter" class="filter-select" multiple="multiple" data-key="Subject">
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Grade filter -->
+          <div class="filter-section">
+            <label for="gradeFilter">الصف:</label>
+            <select id="gradeFilter" class="filter-select" multiple="multiple" data-key="Grade">
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Unit filter -->
+          <div class="filter-section">
+            <label for="unitFilter">الوحدة:</label>
+            <select id="unitFilter" class="filter-select" multiple="multiple" data-key="Unit">
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <button type="button" id="clearFilters">مسح جميع الفلاتر</button>
+      </div>
+
+      <button type="submit" id="submitBtn">إرسال الاستعلام</button>
+    </form>
+
+    <div id="error" class="hidden"></div>
+
+    <div id="appliedFilters" class="hidden">
+      <!-- Filter summary will be inserted here -->
+    </div>
+
+    <div id="filterStats" class="hidden">
+      <!-- Filter statistics will be inserted here -->
+    </div>
+
+    <div id="results" class="hidden">
+      <div class="results-container">
+        <div class="results-column">
+          <h2>استجابة النموذج اللغوي</h2>
+          <div id="llmResponse" class="llm-response"></div>
+        </div>
+
+        <div class="results-column">
+          <h2>نتائج قاعدة المعرفة</h2>
+          <div id="resultCards"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debugging sections -->
+    <div id="discardReasons" class="hidden debug-section">
+      <!-- Reasons for discarding results will be shown here -->
+    </div>
+
+    <div id="unfilteredResults" class="hidden debug-section">
+      <!-- Original unfiltered results will be shown here -->
+    </div>
+
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p>جاري التحميل...</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -6,11 +6,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the application
-COPY . .
-
 # Create necessary directories
 RUN mkdir -p /app/src/public
+
+# Copy the rest of the application
+COPY . .
 
 # Set proper permissions
 RUN chown -R node:node /app

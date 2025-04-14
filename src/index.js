@@ -32,7 +32,7 @@ app.use(express.json());
 
 // Define available metadata options based on your document structure
 const metadataOptions = {
-  Subject: ["Arabic"],
+  Subject: ["Arabic", "English", "Math", "Science"],
   Grade: ["KG1", "KG2"],
   Unit: [4, 5]
 };
@@ -195,45 +195,69 @@ app.post('/api/query', async (req, res) => {
     // Only apply post-filtering if we have filters and results
     if (kbResult.retrievalResults && kbResult.retrievalResults.length > 0 && Object.keys(filtersByKey).length > 0) {
       kbResult.retrievalResults.forEach(result => {
-        // Deep inspection for metadata
-        let resultMetadata = null;
+        // Extract metadata from the result
+        let resultMetadata = {};
         let metadataSource = "Not found";
 
-        // First try the standard path
+        // Check for metadata in different possible locations
         if (result.metadata && result.metadata.metadataAttributes) {
           resultMetadata = result.metadata.metadataAttributes;
           metadataSource = "Standard path: metadata.metadataAttributes";
           foundAnyMetadata = true;
-        }
-        // Then try the custom path if we found one
-        else if (metadataLocation) {
-          const parts = metadataLocation.split('.');
-          let current = result;
-          let valid = true;
-
-          for (const part of parts) {
-            if (current && typeof current === 'object' && part in current) {
-              current = current[part];
-            } else {
-              valid = false;
-              break;
-            }
-          }
-
-          if (valid && current && typeof current === 'object') {
-            resultMetadata = current;
-            metadataSource = `Custom path: ${metadataLocation}`;
-            foundAnyMetadata = true;
-          }
-        }
-        // Try documentAttributes if we found them
-        else if (customMetadataMappings.documentAttributes && result.documentAttributes) {
+        } else if (result.documentAttributes) {
           resultMetadata = result.documentAttributes;
-          metadataSource = "Custom structure: documentAttributes";
+          metadataSource = "Document attributes";
+          foundAnyMetadata = true;
+        } else if (result.location) {
+          resultMetadata = result.location;
+          metadataSource = "Location information";
           foundAnyMetadata = true;
         }
 
-        if (resultMetadata) {
+        // Map AWS Bedrock metadata keys to our filter keys
+        const metadataMapping = {
+          'x-amz-bedrock-kb-source-uri': 'Subject',
+          'x-amz-bedrock-kb-document-page-number': 'Page',
+          'x-amz-bedrock-kb-data-source-id': 'SourceId'
+        };
+
+        // Extract metadata from AWS Bedrock format
+        if (result.metadata) {
+          for (const [key, value] of Object.entries(result.metadata)) {
+            if (metadataMapping[key]) {
+              // Extract metadata from the S3 URI
+              if (key === 'x-amz-bedrock-kb-source-uri') {
+                const uri = value.toString();
+                
+                // Extract Subject
+                if (uri.includes('Arabic')) {
+                  resultMetadata.Subject = 'Arabic';
+                } else if (uri.includes('English')) {
+                  resultMetadata.Subject = 'English';
+                } else if (uri.includes('Math')) {
+                  resultMetadata.Subject = 'Math';
+                } else if (uri.includes('Science')) {
+                  resultMetadata.Subject = 'Science';
+                }
+
+                // Extract Grade
+                if (uri.includes('KG1')) {
+                  resultMetadata.Grade = 'KG1';
+                } else if (uri.includes('KG2')) {
+                  resultMetadata.Grade = 'KG2';
+                }
+
+                // Extract Unit - handle both formats: "Unit 4" and "Unit4"
+                const unitMatch = uri.match(/Unit[ _]?([45])/i);
+                if (unitMatch && unitMatch[1]) {
+                  resultMetadata.Unit = unitMatch[1];
+                }
+              }
+            }
+          }
+        }
+
+        if (Object.keys(resultMetadata).length > 0) {
           // Check if this result matches our filters
           let matches = true;
           let failureReason = null;
@@ -266,8 +290,8 @@ app.post('/api/query', async (req, res) => {
             reason: "No metadata found",
             inspectedPaths: [
               "metadata.metadataAttributes",
-              metadataLocation || "N/A",
-              customMetadataMappings.documentAttributes ? "documentAttributes" : "N/A"
+              "documentAttributes",
+              "location"
             ]
           });
         }
